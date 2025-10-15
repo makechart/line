@@ -49,6 +49,7 @@ mod = ({context, t}) ->
     diff:
       positive: type: \color, default: \#09f
       negative: type: \color, default: \#f90
+      order: type: \choice, default: \none, values: ['none', 'series 1', 'series 2', 'diff']
     dot:
       show: type: \boolean, default: true
       stroke-width: type: \number, default: 1, min: 0, max: 100, step: 0.5
@@ -140,7 +141,16 @@ mod = ({context, t}) ->
     @data.map (d,i) ->
       d.order-text = '' + (if !(d.order?) => i else d.order)
       d._order = if !(d.order?) or isNaN(+d.order) => i else +d.order
+    if @cfg.diff.order and @cfg.diff.order != \none and @cfg.mode == \diff =>
+      order = @cfg.diff.order
+      @data.map (d) ~>
+        d._order = if order == 'series 1' => d.value.0
+        else if order == 'series 2' => d.value.1
+        else d.value.1 - d.value.0
     @data.sort (a,b) -> if a._order > b._order => 1 else if a._order == b._order => 0 else -1
+    if @cfg.diff.order and @cfg.mode == \diff =>
+      @data.map (d,i) -> d._order = i
+
 
   bind: ->
     @legend.config({} <<< @cfg.legend <<< (if @cfg.mode == \diff => {selectable: false} else {}))
