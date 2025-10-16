@@ -323,10 +323,10 @@ mod = ({context, t}) ->
         .attr \x2, (d,i) -> scale.x d.x
         .attr \y1, (d,i) -> scale.y(d.yh) + Math.abs(scale.y(d.yh) - scale.y(d.yl)) / 2
         .attr \y2, (d,i) -> scale.y(d.yh) + Math.abs(scale.y(d.yh) - scale.y(d.yl)) / 2
-        .attr \stroke-linecap, cfg.line.cap
         .attr \opacity, 0
 
     @g.diff.selectAll \line.data
+      .attr \stroke-linecap, cfg.line.cap
       .transition!duration 150
       .attr \x1, (d,i) -> scale.x d.x
       .attr \x2, (d,i) -> scale.x d.x
