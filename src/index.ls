@@ -1,7 +1,8 @@
 module.exports =
   pkg:
     name: 'line', version: '0.0.1'
-    extend: {name: "@makechart/base"}
+    # lite: 不帶 d3 的 base. 補間改用 chart.anim, 可以逐格錄影 ( 見 @plotdb/chart utils/anim )
+    extend: {name: "@makechart/base", path: "lite/index.html"}
     dependencies: []
     i18n:
       "zh-TW":
@@ -13,7 +14,10 @@ module.exports =
     pubsub.fire \init, mod: mod {context, t}
 
 mod = ({context, t}) ->
-  {d3,chart,axis,format,debounce} = context
+  {chart} = context
+  {scale: Scale, shape, brush: Brush, debounce, anim: {join}} = chart.utils
+  svgns = "http://www.w3.org/2000/svg"
+  append-g = (p) -> p.appendChild document.createElementNS(svgns, \g)
   sample-count = 4
   sample: ->
     raw: [0 to 20].map (val) ~>
@@ -63,13 +67,12 @@ mod = ({context, t}) ->
     value: {type: \R, name: "y axis", multiple: true}
     order: {type: \ON, name: "x axis"}
   init: ->
-    svg = d3.select @svg
-    <[yaxis xaxis view legend]>.map ~> @{}g[it] = d3.select(@layout.get-group(it))
-    <[diff line dot]>.map ~> @g[it] = @g.view.append \g
+    <[yaxis xaxis view legend]>.map ~> @{}g[it] = @layout.get-group(it)
+    <[diff line dot]>.map ~> @g[it] = append-g @g.view
     # brush 疊在最上層. x 軸是連續的, 所以發出去的是 range 而不是值列表 -
     # 月份 / 數值這種欄位相異值太多, 列舉不完也撐不過新資料進來
-    @g.brush = @g.view.append \g
-    @brush = d3.brushX!
+    @g.brush = append-g @g.view
+    @brush = new Brush dir: \x
     @range = "null"
     brush-end = debounce 150, (e) ~>
       if !@cfg.brush.enabled => return
@@ -83,23 +86,23 @@ mod = ({context, t}) ->
     @brush.on \end, brush-end
     @brush.on \brush, brush-end
     @tint = tint = new chart.utils.tint!
-    @line = d3.line!
+    @line = shape.line!
       .defined ~>
         !isNaN(it.y1)
       .x ~> @scale.x it.x
       .y ~> @scale.y it.y1
-    @area = d3.area!
+    @area = shape.area!
       .defined ~>
         !isNaN(it.y1) and !isNaN(it.y0)
       .x ~> @scale.x it.x
       .y0 ~> @scale.y it.y0
       .y1 ~> @scale.y it.y1
     # partial 用的第二條線 - 走 y1s ( 子集的值 ), 其餘與上面同一套
-    @line-sub = d3.line!
+    @line-sub = shape.line!
       .defined ~> !isNaN(it.y1s)
       .x ~> @scale.x it.x
       .y ~> @scale.y it.y1s
-    @area-sub = d3.area!
+    @area-sub = shape.area!
       .defined ~> !isNaN(it.y1s) and !isNaN(it.y0)
       .x ~> @scale.x it.x
       .y0 ~> @scale.y it.y0
@@ -116,7 +119,7 @@ mod = ({context, t}) ->
       x = evt.clientX - @layout.get-node(\view).getBoundingClientRect!x
       y = evt.clientY - @layout.get-node(\view).getBoundingClientRect!y
       if @cfg.mode == \streamgraph =>
-        series = d3.select(evt.target).datum!
+        series = evt.target.__data__
         if !(series and series.pts) => return
         bind = series.bind
         min = {d: -1, p: null}
@@ -154,14 +157,14 @@ mod = ({context, t}) ->
       layout: @layout
       root: @root
       name: \legend
-      shape: (d) -> d3.select(@).attr \fill, tint.get d.text
+      shape: (d) -> @setAttribute \fill, tint.get d.text
       direction: \vertical
       cfg: selectable: true
     @legend.on \select, ~>
       # legend.crossfilter 打開時, 勾選就是對外的 filter ( 見 local.legend-to-filter )
       if (@cfg.legend or {}).crossfilter => return @local.legend-to-filter!
       @bind!; @resize!; @render!
-    @scale = { x: d3.scaleLinear!, y: d3.scaleLinear! }
+    @scale = { x: Scale.linear!, y: Scale.linear! }
 
   # line 的 legend 項目是 binding.value 的 key. 用 data.series 展開出來的話,
   # 那些 key 就是資料值 ( 書系名 ), 拿來 crossfilter 講得通; 手挑欄位當 measure 的
@@ -298,8 +301,8 @@ mod = ({context, t}) ->
     # ensure dot rendered inside canvas
     view-node = @root.querySelector('.pdl-layout div[data-type=layout]')
     view-node.style.padding = "#{Math.max(@cfg.dot.size + @cfg.dot.strokeWidth/2, @cfg.line.strokeWidth/2)}px"
-    @line.curve if @cfg.line.mode == \curve => d3.curveCatmullRom else d3.curveLinear
-    @area.curve if @cfg.line.mode == \curve => d3.curveCatmullRom else d3.curveLinear
+    @line.curve if @cfg.line.mode == \curve => shape.curve.catmull-rom else shape.curve.linear
+    @area.curve if @cfg.line.mode == \curve => shape.curve.catmull-rom else shape.curve.linear
     @tip.toggle(if @cfg.{}tip.enabled? => @cfg.tip.enabled else true)
     [miny,maxy] = [NaN,NaN]
     for i from 0 til @parsed.length =>
@@ -316,7 +319,9 @@ mod = ({context, t}) ->
       if miny > 0 => miny = miny * (@cfg.yaxis.cutoff or 0) / 100
       if maxy < 0 => maxy = maxy * (@cfg.yaxis.cutoff or 0) / 100
     @extent =
-      x: d3.extent @data, -> (it._order)
+      x: do ~>
+        vs = @data.map(-> it._order).filter -> it? and !isNaN(it)
+        if vs.length => [Math.min.apply(Math, vs), Math.max.apply(Math, vs)] else [undefined, undefined]
       y: [
         if @cfg.mode == \bump => miny >? 1 else miny,
         if @cfg.mode == \bump => @parsed.length or 1
@@ -381,122 +386,125 @@ mod = ({context, t}) ->
     yseg = @parsed.length >? 1
     yoffset = if !@cfg.stack and @cfg.mode == \area => (@box.height - @cfg.dot.size) * @cfg.area.offset else 0
 
-    @g.diff.selectAll \line.data .data(@bars)
-      ..exit!remove!
-      ..enter!append \line .attr \class, \data
-        .attr \x1, (d,i) -> scale.x d.x
-        .attr \x2, (d,i) -> scale.x d.x
-        .attr \y1, (d,i) -> scale.y(d.yh) + Math.abs(scale.y(d.yh) - scale.y(d.yl)) / 2
-        .attr \y2, (d,i) -> scale.y(d.yh) + Math.abs(scale.y(d.yh) - scale.y(d.yl)) / 2
-        .attr \opacity, 0
+    tween = (n, attrs) ~> @anim.tween n, attrs, {duration: 150}
+    drop = (n) ~>
+      @anim.interrupt n
+      n.remove!
+    set = (n, attrs) -> for k, v of attrs => n.setAttribute k, v
 
-    @g.diff.selectAll \line.data
-      .attr \stroke-linecap, cfg.line.cap
-      .transition!duration 150
-      .attr \x1, (d,i) -> scale.x d.x
-      .attr \x2, (d,i) -> scale.x d.x
-      .attr \y1, (d,i) -> scale.y d.yh
-      .attr \y2, (d,i) -> scale.y(d.yh) + Math.abs(scale.y(d.yh) - scale.y(d.yl))
-      .attr \stroke, (d,i) -> if (d.y1 > d.y0) > 0 => cfg.diff.positive else cfg.diff.negative
-      .attr \stroke-width, cfg.line.stroke-width
-      .attr \opacity, 1
+    dj = join root: @g.diff, tag: \line, cls: \data, data: @bars
+    dj.exit.map drop
+    dj.enter.map (n) ->
+      d = n.__data__
+      ym = scale.y(d.yh) + Math.abs(scale.y(d.yh) - scale.y(d.yl)) / 2
+      set n, {x1: scale.x(d.x), x2: scale.x(d.x), y1: ym, y2: ym, opacity: 0}
+    dj.nodes.map (n) ->
+      d = n.__data__
+      n.setAttribute \stroke-linecap, cfg.line.cap
+      tween n, do
+        x1: scale.x d.x
+        x2: scale.x d.x
+        y1: scale.y d.yh
+        y2: scale.y(d.yh) + Math.abs(scale.y(d.yh) - scale.y(d.yl))
+        stroke: if (d.y1 > d.y0) > 0 => cfg.diff.positive else cfg.diff.negative
+        "stroke-width": cfg.line.stroke-width
+        opacity: 1
 
     p = [@parsed[i] for i from @parsed.length - 1 to 0 by -1]
-    @g.line.selectAll \path.data .data((if @cfg.mode == \diff => [] else p), -> it.bind.key)
-      ..exit!remove!
-      ..enter!append \path .attr \class, \data
-        .attr \fill, \none
-        .attr \d, (d,i) ~>
-          if @cfg.mode in <[streamgraph area]> => @area d.pts
-          else @line d.pts
-        .attr \stroke, (d,i) ~> @tint.get d.color
-        .attr \stroke-width, cfg.line.stroke-width
-    @g.line.selectAll \path.data
-      .transition!duration 150
-      .attr \transform, (d,i) -> "translate(0,-#{(yseg - i - 1) * yoffset / yseg})"
-      .style \opacity, (d,i) ~> if @legend.is-selected(d.bind.key) => 1 else @legend.opacity!
-      .attr \d, (d,i) ~>
-        if @cfg.mode in <[streamgraph area]> => @area d.pts
-        else @line d.pts
-      # partial 時整條線先灰化當底 ( 未篩選的全體 ), 真正的顏色畫在下面那一層
-      .attr \stroke, (d,i) ~>
-        c = @tint.get d.color
-        if @partial => @subset.color(c) else c
-      .attr \stroke-width, cfg.line.stroke-width
-      .attr \fill, (d,i) ~> if @cfg.mode in <[streamgraph area]> => @tint.get(d.color) else \none
-      .attr \fill-opacity, cfg.area.opacity
-      .attr \stroke-linecap, cfg.line.cap
-      .attr \stroke-linejoin, cfg.line.join
+    area-mode = @cfg.mode in <[streamgraph area]>
+    opacity-of = (d) ~> if @legend.is-selected(d.bind.key) => 1 else @legend.opacity!
+    # 沒有位移 ( 包含 yoffset 算不出來的 NaN ) 就不寫 transform, 跟 d3 的 transform 補間結果一樣
+    shift = (i) ->
+      v = (yseg - i - 1) * yoffset / yseg
+      if !v => '' else "translate(0,-#v)"
+    lj = join root: @g.line, tag: \path, cls: \data, data: (if @cfg.mode == \diff => [] else p), key: (-> it.bind.key)
+    lj.exit.map drop
+    lj.enter.map (n) ~>
+      d = n.__data__
+      set n, do
+        fill: \none
+        d: if area-mode => @area d.pts else @line d.pts
+        stroke: @tint.get d.color
+        "stroke-width": cfg.line.stroke-width
+    lj.nodes.map (n, i) ~>
+      d = n.__data__
+      c = @tint.get d.color
+      tween n, do
+        transform: shift i
+        "style:opacity": opacity-of d
+        d: if area-mode => @area d.pts else @line d.pts
+        # partial 時整條線先灰化當底 ( 未篩選的全體 ), 真正的顏色畫在下面那一層
+        stroke: if @partial => @subset.color(c) else c
+        "stroke-width": cfg.line.stroke-width
+        fill: if area-mode => @tint.get(d.color) else \none
+        "fill-opacity": cfg.area.opacity
+        "stroke-linecap": cfg.line.cap
+        "stroke-linejoin": cfg.line.join
 
     # partial 的那一層: 同一條線在子集上的位置. 灰底 + 彩線 = 「總量多少、選中多少」
-    @g.line.selectAll \path.subset .data((if @partial => p else []), -> it.bind.key)
-      ..exit!remove!
-      ..enter!append \path .attr \class, \subset
-        .attr \fill, \none
-        .style \pointer-events, \none
-    @g.line.selectAll \path.subset
-      .transition!duration 150
-      .attr \transform, (d,i) -> "translate(0,-#{(yseg - i - 1) * yoffset / yseg})"
-      .style \opacity, (d,i) ~> if @legend.is-selected(d.bind.key) => 1 else @legend.opacity!
-      .attr \d, (d,i) ~>
-        if @cfg.mode in <[streamgraph area]> => @area-sub d.pts
-        else @line-sub d.pts
-      .attr \stroke, (d,i) ~> @tint.get d.color
-      .attr \stroke-width, cfg.line.stroke-width
-      .attr \fill, (d,i) ~> if @cfg.mode in <[streamgraph area]> => @tint.get(d.color) else \none
-      .attr \fill-opacity, cfg.area.opacity
-      .attr \stroke-linecap, cfg.line.cap
-      .attr \stroke-linejoin, cfg.line.join
+    sj = join root: @g.line, tag: \path, cls: \subset, data: (if @partial => p else []), key: (-> it.bind.key)
+    sj.exit.map drop
+    sj.enter.map (n) ->
+      n.setAttribute \fill, \none
+      n.style.pointerEvents = \none
+    sj.nodes.map (n, i) ~>
+      d = n.__data__
+      tween n, do
+        transform: shift i
+        "style:opacity": opacity-of d
+        d: if area-mode => @area-sub d.pts else @line-sub d.pts
+        stroke: @tint.get d.color
+        "stroke-width": cfg.line.stroke-width
+        fill: if area-mode => @tint.get(d.color) else \none
+        "fill-opacity": cfg.area.opacity
+        "stroke-linecap": cfg.line.cap
+        "stroke-linejoin": cfg.line.join
 
     self = @
     dot-data = if !@cfg.dot.show => [] else @parsed
-    @g.dot.selectAll \g.dot .data(dot-data, -> it.bind.key)
-      ..exit!remove!
-      ..enter!append \g .attr \class, \dot
-    @g.dot.selectAll \g.dot
-      .style \opacity, (d,i) ~> if @legend.is-selected(d.bind.key) => 1 else @legend.opacity!
-      .each (d,j) ->
-        # old dot.fill is of type `boolean` which controls if we should fill or not
-        # new config provides color with customized `auto` value,
-        # indicating use the value of corresponding line automatically.
-        fill = if typeof(cfg.dot.fill) == \bool or !(cfg.dot.fill?) or cfg.dot.fill == \auto =>
-          if cfg.dot.fill => tint.get(d.color) else cfg.background
-        else cfg.dot.fill
-        d3.select(@).selectAll \circle.dot .data d.pts
-          ..exit!remove!
-          ..enter!append \circle .attr \class, \dot
-            .attr \r, r
-            .attr \fill, fill
-            .attr \stroke, tint.get(d.bind.name or d.bind.key)
-            .attr \stroke-width, cfg.dot.stroke-width
-        d3.select(@).selectAll \circle.dot
-          .filter (d,i) -> isNaN d.y1
-          .attr \cx, (d,i) -> if isNaN(scale.x d.x) => scale.x(extent.x.0) else scale.x(d.x)
-          .attr \cy, (d,i) -> scale.y(extent.y.0) # - (yseg - j - 1) * yoffset / yseg
-          .transition 150
-          .attr \opacity, 0
-        d3.select(@).selectAll \circle.dot
-          .filter (d,i) -> !isNaN d.y1
-          .attr \cx, (d,i) -> scale.x d.x
-          # partial 時點跟著彩線走 - 灰線是背景參照, 真正的值在子集那條
-          .attr \cy, (d,i) -> scale.y(if self.partial and !isNaN(d.y1s) => d.y1s else d.y1) - j * yoffset / yseg
-          .attr \r, r
-          .attr \fill, fill
-          .attr \stroke, tint.get d.color
-          .attr \stroke-width, cfg.dot.stroke-width
-          .transition 150
-          .attr \opacity, 1
+    gj = join root: @g.dot, tag: \g, cls: \dot, data: dot-data, key: (-> it.bind.key)
+    gj.exit.map drop
+    gj.nodes.map (g, j) ~>
+      d = g.__data__
+      g.style.opacity = opacity-of d
+      # old dot.fill is of type `boolean` which controls if we should fill or not
+      # new config provides color with customized `auto` value,
+      # indicating use the value of corresponding line automatically.
+      fill = if typeof(cfg.dot.fill) == \bool or !(cfg.dot.fill?) or cfg.dot.fill == \auto =>
+        if cfg.dot.fill => tint.get(d.color) else cfg.background
+      else cfg.dot.fill
+      cj = join root: g, tag: \circle, cls: \dot, data: d.pts
+      cj.exit.map drop
+      cj.enter.map (n) ->
+        set n, {r: r, fill: fill, stroke: tint.get(d.bind.name or d.bind.key), "stroke-width": cfg.dot.stroke-width}
+      cj.nodes.map (n) ->
+        pt = n.__data__
+        if isNaN pt.y1 =>
+          set n, do
+            cx: if isNaN(scale.x pt.x) => scale.x(extent.x.0) else scale.x(pt.x)
+            cy: scale.y(extent.y.0)
+          tween n, {opacity: 0}
+        else
+          set n, do
+            cx: scale.x pt.x
+            # partial 時點跟著彩線走 - 灰線是背景參照, 真正的值在子集那條
+            cy: scale.y(if self.partial and !isNaN(pt.y1s) => pt.y1s else pt.y1) - j * yoffset / yseg
+            r: r
+            fill: fill
+            stroke: tint.get d.color
+            "stroke-width": cfg.dot.stroke-width
+          tween n, {opacity: 1}
 
     if @cfg.brush.enabled =>
-      @g.brush.style \display, \block
-      @g.brush.call @brush
+      @g.brush.style.display = \block
+      @brush.attach @g.brush
       # 灌回來的區間要在 brush 掛好之後才推得動. 但只在確實有區間時才推 -
       # binding 每次 render 都重建, 不判斷的話 set-raw 觸發的這個 render 會先把框清掉
       # ( 此時 binding 上還沒有 filter ), 接著 host 灌回選取時就重畫一個對齊格線的框,
       # 看起來就是使用者拉的框自己跳走了. 清框由 mod.filter 那條路負責
       if ((@binding.order or {}).filter) => @local.sync-brush!
-    else @g.brush.style \display, \none
-    @g.brush.selectAll \rect.selection .attr \shape-rendering, \auto
+    else @g.brush.style.display = \none
+    @g.brush.querySelectorAll \rect.selection .forEach -> it.setAttribute \shape-rendering, \auto
 
     @legend.render!
     @xaxis.render!
@@ -508,19 +516,19 @@ mod = ({context, t}) ->
 
     # 外面灌進來的區間 -> brush 的像素位置
     sync-brush: ->
-      if !@brush or !(node = @g.brush.node!) or !node.__brush => return
+      if !@brush or !@brush.attached! => return
       f = (@binding.order or {}).filter
       vs = (f or {}).value
       if !(f and vs and vs.length == 2) =>
         @range = "null"
-        return @brush.move @g.brush, null
+        return @brush.move null
       inside = @data.filter -> it.order >= vs.0 and it.order <= vs.1
       if !inside.length =>
         @range = "null"
-        return @brush.move @g.brush, null
+        return @brush.move null
       # 目前這個框已經框到同一段就不要動它. host 每次 render 都會把選取灌回來,
       # 不擋的話使用者放開滑鼠就會看到框跳去對齊格線 - 選的東西沒變, 只是框自己動了
-      if (cur = d3.brush-selection node) =>
+      if (cur = @brush.selection!) =>
         [lo, hi] = cur.map ~> @scale.x.invert it
         ins = @data.filter -> it._order >= lo and it._order <= hi
         if ins.length and ins.0.order == vs.0 and ins[* - 1].order == vs.1 => return
@@ -533,7 +541,7 @@ mod = ({context, t}) ->
         (@scale.x(inside[* - 1]._order) + pad) <? box.width
       ]
       @range = JSON.stringify sel
-      @brush.move @g.brush, sel
+      @brush.move sel
 
     legend-to-filter: ->
       vs = @legend.selected!
