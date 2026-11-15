@@ -1,5 +1,12 @@
 # Change Logs
 
+## v0.0.5
+
+ - resize handling moves to `@plotdb/chart` ( needs >= 3.9.1 ): renders triggered by container resize
+   run with `anim.immediate`, so the chart's own `@box` size check is removed. with an older
+   `@plotdb/chart`, lines / dots lag behind the axes again while dragging
+
+
 ## v0.0.4
 
  - fix bug: dots didn't transition with lines ( `cx` / `cy` were set directly ); new dots are

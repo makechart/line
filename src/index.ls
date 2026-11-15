@@ -386,12 +386,8 @@ mod = ({context, t}) ->
     yseg = @parsed.length >? 1
     yoffset = if !@cfg.stack and @cfg.mode == \area => (@box.height - @cfg.dot.size) * @cfg.area.offset else 0
 
-    # 容器尺寸改變時直接畫到位, 跟軸一致. 看 @box ( root ) 而不是 view - 換資料時軸寬會變, 那不算縮放. 拖動縮放時每格都會 render, 若照常補間,
-    # 每格都從頭起一段 cubic-in-out, 起頭很慢, 線會看起來等放開才跟上
-    size = "#{@box.width}x#{@box.height}"
-    duration = if @_vsize? and @_vsize != size => 0 else 150
-    @_vsize = size
-    tween = (n, attrs) ~> @anim.tween n, attrs, {duration}
+    # 容器縮放時 @plotdb/chart ( >= 3.9.1 ) 會開 anim.immediate, 這裡照常補間即可
+    tween = (n, attrs) ~> @anim.tween n, attrs, {duration: 150}
     drop = (n) ~>
       @anim.interrupt n
       n.remove!
