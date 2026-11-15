@@ -386,7 +386,12 @@ mod = ({context, t}) ->
     yseg = @parsed.length >? 1
     yoffset = if !@cfg.stack and @cfg.mode == \area => (@box.height - @cfg.dot.size) * @cfg.area.offset else 0
 
-    tween = (n, attrs) ~> @anim.tween n, attrs, {duration: 150}
+    # 容器尺寸改變時直接畫到位, 跟軸一致. 看 @box ( root ) 而不是 view - 換資料時軸寬會變, 那不算縮放. 拖動縮放時每格都會 render, 若照常補間,
+    # 每格都從頭起一段 cubic-in-out, 起頭很慢, 線會看起來等放開才跟上
+    size = "#{@box.width}x#{@box.height}"
+    duration = if @_vsize? and @_vsize != size => 0 else 150
+    @_vsize = size
+    tween = (n, attrs) ~> @anim.tween n, attrs, {duration}
     drop = (n) ~>
       @anim.interrupt n
       n.remove!
@@ -473,27 +478,30 @@ mod = ({context, t}) ->
       fill = if typeof(cfg.dot.fill) == \bool or !(cfg.dot.fill?) or cfg.dot.fill == \auto =>
         if cfg.dot.fill => tint.get(d.color) else cfg.background
       else cfg.dot.fill
+      # NaN 的點收到底線上淡出; 其他點 partial 時跟著彩線走 - 灰線是背景參照, 真正的值在子集那條
+      pos = (pt) ->
+        if isNaN pt.y1 =>
+          cx: if isNaN(scale.x pt.x) => scale.x(extent.x.0) else scale.x(pt.x)
+          cy: scale.y(extent.y.0)
+        else
+          cx: scale.x pt.x
+          cy: scale.y(if self.partial and !isNaN(pt.y1s) => pt.y1s else pt.y1) - j * yoffset / yseg
       cj = join root: g, tag: \circle, cls: \dot, data: d.pts
       cj.exit.map drop
+      # 新的點直接放到定位, 不然 cx / cy 會從 0 補間飛進來
       cj.enter.map (n) ->
-        set n, {r: r, fill: fill, stroke: tint.get(d.bind.name or d.bind.key), "stroke-width": cfg.dot.stroke-width}
+        set n, {r: r, fill: fill, stroke: tint.get(d.bind.name or d.bind.key), "stroke-width": cfg.dot.stroke-width} <<< pos(n.__data__)
       cj.nodes.map (n) ->
         pt = n.__data__
-        if isNaN pt.y1 =>
-          set n, do
-            cx: if isNaN(scale.x pt.x) => scale.x(extent.x.0) else scale.x(pt.x)
-            cy: scale.y(extent.y.0)
-          tween n, {opacity: 0}
+        {cx, cy} = pos pt
+        if isNaN pt.y1 => tween n, {cx, cy, opacity: 0}
         else
           set n, do
-            cx: scale.x pt.x
-            # partial 時點跟著彩線走 - 灰線是背景參照, 真正的值在子集那條
-            cy: scale.y(if self.partial and !isNaN(pt.y1s) => pt.y1s else pt.y1) - j * yoffset / yseg
             r: r
             fill: fill
             stroke: tint.get d.color
             "stroke-width": cfg.dot.stroke-width
-          tween n, {opacity: 1}
+          tween n, {cx, cy, opacity: 1}
 
     if @cfg.brush.enabled =>
       @g.brush.style.display = \block
