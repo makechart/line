@@ -1,5 +1,21 @@
 # Change Logs
 
+## v0.0.5
+
+ - resize handling moves to `@plotdb/chart` ( needs >= 3.9.1 ): renders triggered by container resize
+   run with `anim.immediate`, so the chart's own `@box` size check is removed. with an older
+   `@plotdb/chart`, lines / dots lag behind the axes again while dragging
+
+
+## v0.0.4
+
+ - fix bug: dots didn't transition with lines ( `cx` / `cy` were set directly ); new dots are
+   placed in position on enter instead of flying in from 0
+ - resizing the container renders lines / dots immediately, consistent with the axes. tweening on
+   every resize frame restarted the ease-in each frame, so lines lagged until dragging stopped.
+   data / config changes still transition
+
+
 ## v0.0.3
 
  - extend the lite base ( `@makechart/base` `lite/index.html`, no d3 ): needs `@makechart/base` >= 0.2.0
