@@ -9,6 +9,14 @@ mk = (n = 4, len = 12, opt = {}) ->
   binding:
     value: [1 to n].map -> {key: "v#it", name: "S#it"}
     order: {key: \order}
+# 末端全部收斂到同一個值: direct labeling 的四個標籤會疊在一起,
+# 才測得到解重疊與引線
+converge = (n = 4, len = 12) ->
+  d = mk n, len
+  d.raw[len - 1] = {order: 2000 + len - 1}
+  for i from 1 to n => d.raw[len - 1]["v#i"] = 100
+  d
+
 with-subset = (d) ->
   r = mctest.random 42
   d.subset = d.raw.map (row) ->
@@ -25,6 +33,7 @@ mctest.suite do
     one: mk 1
     gap: mk 3, 12, {gap: true}
     subset: with-subset mk 3
+    converge: converge 4
   cases:
     * name: "line", data: \four
     * name: "line:curve", data: \four, config: {line: {mode: \curve}}
@@ -39,6 +48,11 @@ mctest.suite do
     * name: "gap:curve", data: \gap, config: {line: {mode: \curve}}
     * name: "dot:off", data: \four, config: {dot: {show: false}}
     * name: "partial", data: \subset, config: {common: {subset: {mode: \partial}}}
+    # direct labeling: 名字寫在線的末端. four 的四條線末端會擠在一起, 所以
+    # 剛好同時測到「解重疊」與「被推開的才畫引線」
+    * name: "legend:direct", data: \four, config: {legend: {mode: \direct}}
+    * name: "legend:direct,one", data: \one, config: {legend: {mode: \direct}}
+    * name: "legend:direct,converge", data: \converge, config: {legend: {mode: \direct}}
     * name: "legend:dim", data: \four, config: {legend: {subset: {mode: \dim}}}
       steps: (c) ->
         c.legend.select <[v1 v3 v4]>

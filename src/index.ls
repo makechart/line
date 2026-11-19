@@ -160,6 +160,18 @@ mod = ({context, t}) ->
       shape: (d) -> @setAttribute \fill, tint.get d.text
       direction: \vertical
       cfg: selectable: true
+    # direct labeling 的錨點: 每條線末端的高度.
+    # legend 畫在自己的格子裡, 所以換算成 legend 格子的座標
+    @legend.anchor (d) ~>
+      ss = (@parsed or []).filter -> (it.bind or {}).key == d.key
+      if !ss.length => return null
+      pts = ss.0.pts or []
+      if !pts.length => return null
+      v = pts[pts.length - 1].y1
+      if !(v?) or isNaN(v) => return null
+      [vb, lb] = [(@layout.get-box \view), (@layout.get-box \legend)]
+      (vb.y + @scale.y(v)) - lb.y
+
     @legend.on \select, ~>
       # legend.crossfilter 打開時, 勾選就是對外的 filter ( 見 local.legend-to-filter )
       if (@cfg.legend or {}).crossfilter => return @local.legend-to-filter!
