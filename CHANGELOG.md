@@ -1,5 +1,15 @@
 # Change Logs
 
+## v0.0.8
+
+ - supply legend anchors ( needs `@plotdb/chart` >= 3.14.0 ), so `legend.mode: "direct"` writes each
+   series name at the end of its own line instead of stacking a list to the side. the anchor is the
+   last point's y, converted into the legend cell's own coordinates; the core resolves the overlaps
+   and draws a leader for each label it had to move
+ - add `legend:direct` test cases, including one whose series all converge on the same last value,
+   so the overlap solver and the leaders are actually exercised
+
+
 ## v0.0.7
 
  - fix bug: the legend swatches and the lines took their colors from different keys, so a binding
