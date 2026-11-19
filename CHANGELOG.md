@@ -1,5 +1,18 @@
 # Change Logs
 
+## v0.0.7
+
+ - fix bug: the legend swatches and the lines took their colors from different keys, so a binding
+   with a `name` set made them disagree - the legend took `binding.key` and the lines took
+   `name or key`, which are two different entries in the tint, so the legend claimed the first
+   palette colors and the lines got whatever came after. the legend now uses the same key, and
+   shows `name` instead of the raw field key. snapshots updated: legend and lines are now one set
+   of colors starting at the palette's first
+ - note: v0.0.6's `tint.reset` is what made this visible ( the number of colors claimed before the
+   lines became the series count, so changing the series count changed a line's color ). the
+   mismatch itself has always been there
+
+
 ## v0.0.6
 
  - reset tint in `parse`, so colors used by the sample data don't push real series onto interpolated

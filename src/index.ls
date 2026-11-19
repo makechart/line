@@ -218,7 +218,11 @@ mod = ({context, t}) ->
       (
         if @cfg.mode == \diff => [bind-value.0, bind-value.1].filter(-> it)
         else @binding.value or []
-      ).map -> {key: it.key, text: it.key}
+      # text 同時是「顯示的文字」與「取色的 key」( legend 的 shape 用 tint.get d.text ),
+      # 而線是用 name or key 取色 - 兩邊不一致的話, binding 有設 name 時 legend 會先佔掉
+      # palette 前幾色, 線只好拿後面的, 圓點跟線就對不起來.
+      # 改成跟線同一個 key, 順便讓 legend 顯示的是 name 而不是欄位代號
+      ).map -> {key: it.key, text: (it.name or it.key)}
     )
     # is-visible: shrink 時等於 is-selected ( 沒勾的整條不畫 ), dim 時全部都畫,
     # 由下面的 opacity 決定深淺
