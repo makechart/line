@@ -194,6 +194,9 @@ mod = ({context, t}) ->
     @tip.destroy!
 
   parse: ->
+    # 配色是依「第幾個遇到的 key」分配的, 不重置的話範例資料用掉的色號會留著,
+    # 真實資料只好拿內插出來的顏色 - pie 與 percent-list 本來就有這一行
+    @tint.reset!
     @data.map (d,i) ->
       d.order-text = '' + (if !(d.order?) => i else d.order)
       d._order = if !(d.order?) or isNaN(+d.order) => i else +d.order
