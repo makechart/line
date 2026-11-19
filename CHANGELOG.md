@@ -1,5 +1,12 @@
 # Change Logs
 
+## v0.0.6
+
+ - reset tint in `parse`, so colors used by the sample data don't push real series onto interpolated
+   colors ( same as pie / percent-list ). without this a 4-color palette on 4 series silently ends up
+   with 4 interpolated colors instead of the declared ones
+
+
 ## v0.0.5
 
  - resize handling moves to `@plotdb/chart` ( needs >= 3.9.1 ): renders triggered by container resize
