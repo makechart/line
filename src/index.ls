@@ -170,6 +170,12 @@ mod = ({context, t}) ->
   # 那些 key 就是資料值 ( 書系名 ), 拿來 crossfilter 講得通; 手挑欄位當 measure 的
   # 就不該打開 - 所以由 cfg 決定, 不由圖表類型決定.
   #
+  # 資料座標 -> 繪圖區座標. 核心的參考線與資料座標註記靠這個問路 -
+  # scale 是每張圖自己建的, 核心沒有. x 吃的是 order ( 資料點的序號 ), y 吃的是數值
+  space:
+    x: (v) -> if @scale and @scale.x => @scale.x(v) else null
+    y: (v) -> if @scale and @scale.y => @scale.y(v) else null
+
   # 注意這一維是 value, 跟資料點所在的 order 維是不同欄位 - host 兩邊分開對應.
   # value = legend 挑的 series; order = brush 拉的區間. 兩維各自對應不同欄位
   filter-dims: ->

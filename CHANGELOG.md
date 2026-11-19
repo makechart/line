@@ -8,6 +8,9 @@
    palette colors and the lines got whatever came after. the legend now uses the same key, and
    shows `name` instead of the raw field key. snapshots updated: legend and lines are now one set
    of colors starting at the palette's first
+ - implement the `space` scope ( needs `@plotdb/chart` >= 3.11.0 ): `space.x` takes an order index
+   and `space.y` a value, so the core can draw reference lines and data-space annotations on this
+   chart. the core owns no scales, so it has to ask
  - note: v0.0.6's `tint.reset` is what made this visible ( the number of colors claimed before the
    lines became the series count, so changing the series count changed a line's color ). the
    mismatch itself has always been there
