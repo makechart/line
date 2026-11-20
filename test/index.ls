@@ -25,6 +25,11 @@ with-subset = (d) ->
     ret
   d
 
+# chart.interactions! ( 哪個操作會發哪幾維的 filter ) 要等於 want
+interactions-is = (want) -> (c) ->
+  got = JSON.stringify c.interactions!
+  if got != JSON.stringify(want) => throw new Error("interactions: #got, 應為 #{JSON.stringify want}")
+
 mctest.suite do
   size: [560, 340]
   data:
@@ -36,6 +41,10 @@ mctest.suite do
     converge: converge 4
   cases:
     * name: "line", data: \four
+    # 圖例 ( crossfilter 打開時 ) 發 value, brush 發 order, 點資料點不發
+    * name: "interactions:default", data: \four, steps: [interactions-is {}]
+    * name: "interactions:brush", data: \four, config: {brush: {enabled: true}}, steps: [interactions-is {brush: <[order]>}]
+    * name: "interactions:legend", data: \four, config: {legend: {crossfilter: true}, brush: {enabled: false}}, steps: [interactions-is {legend: <[value]>}]
     * name: "line:curve", data: \four, config: {line: {mode: \curve}}
     * name: "area", data: \four, config: {mode: \area}
     * name: "area:stack", data: \four, config: {mode: \area, stack: true}

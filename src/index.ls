@@ -196,6 +196,13 @@ mod = ({context, t}) ->
     if (@cfg.brush or {}).enabled => ret.push \order
     ret
 
+  # 點資料點不發 filter
+  interactions: ->
+    ret = {}
+    if (@cfg.legend or {}).crossfilter => ret.legend = <[value]>
+    if (@cfg.brush or {}).enabled => ret.brush = <[order]>
+    ret
+
   filter: (filters, internal) ->
     if (@cfg.legend or {}).crossfilter =>
       vs = (((@binding.value or [])[0] or {}).filter or {}).value

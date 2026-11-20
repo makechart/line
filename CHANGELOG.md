@@ -1,5 +1,11 @@
 # Change Logs
 
+## v0.0.9
+
+ - declare `interactions` ( needs `@plotdb/chart` >= 3.16.0 ): legend ( `value`, with `legend.crossfilter` )
+   and brush ( `order` ). clicking a point does not filter
+ - add `interactions:*` test cases
+
 ## v0.0.8
 
  - supply legend anchors ( needs `@plotdb/chart` >= 3.14.0 ), so `legend.mode: "direct"` writes each
