@@ -1,6 +1,6 @@
 {
   "name": "@makechart/line",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "",
   "scripts": {
     "test": "mctest",
