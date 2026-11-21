@@ -38,31 +38,32 @@ mod = ({context, t}) ->
     tip: \tip
   }) <<<
     yaxis: chart.utils.config.from({preset: \axis}) <<<
-      cutoff: type: \number, default: 0, min: 0, max: 100, step: 0.5
-    mode: type: \choice, values: <[line area streamgraph bump diff]>, default: \line
-    stack: type: \boolean
+      cutoff: type: \number, default: 0, min: 0, max: 100, step: 0.5, desc: {en: "where the y axis starts when all values are positive, as a percent of the smallest value; 0 starts at zero, 100 starts at the smallest value ( line and diff modes only )", "zh-TW": "數值都是正的時候 Y 軸從哪裡開始，以最小值的百分比表示；0 從零開始，100 從最小值開始 ( 只用於 line 與 diff 模式 )"}
+    mode: type: \choice, values: <[line area streamgraph bump diff]>, default: \line, desc: {en: "chart type: line draws lines, area fills under them, streamgraph stacks areas around the center, bump plots each series' rank, diff colors the gap between the first two series", "zh-TW": "圖表類型：line 折線，area 填滿線下的面積，streamgraph 以中線為準堆疊面積，bump 畫出各系列的排名，diff 以顏色標出前兩個系列的差距"}
+    stack: type: \boolean, desc: {en: "stack the series on top of each other instead of drawing them from zero ( line and area modes )", "zh-TW": "把各系列往上疊加，而不是都從零畫起 ( 用於 line 與 area 模式 )"}
     brush:
-      enabled: type: \boolean, default: false
+      enabled: type: \boolean, default: false, desc: {en: "drag across the chart to select a range on the x axis, to filter other charts on a dashboard", "zh-TW": "在圖上拖拉選取 X 軸的一段範圍，用來篩選儀表板上的其他圖"}
     area:
-      opacity: type: \number, default: 0.5, min: 0.01, max: 1, step: 0.01
-      offset: type: \number, default: 0, min: 0, max: 1, step: 0.01
-      percent: type: \boolean, default: false
+      opacity: type: \number, default: 0.5, min: 0.01, max: 1, step: 0.01, desc: {en: "fill opacity of the areas ( 0 to 1 )", "zh-TW": "面積填色的不透明度 ( 0 到 1 )"}
+      offset: type: \number, default: 0, min: 0, max: 1, step: 0.01, desc: {en: "shift each unstacked area upward by a step so they overlap like a ridgeline, as a fraction of the chart height ( 0 to 1, area mode only )", "zh-TW": "未堆疊時把每個面積逐一往上錯開，像山脊圖一樣重疊，以圖高的比例表示 ( 0 到 1，只用於 area 模式 )"}
+      percent: type: \boolean, default: false, desc: {en: "scale the stacked areas so every point adds up to 100% ( area mode with stack on )", "zh-TW": "把堆疊的面積換算成每個點加總為 100% ( 用於 area 模式並開啟堆疊時 )"}
     line:
-      mode: type: \choice, values: <[curve linear]>, default: \linear
-      stroke-width: type: \number, default: 1, min: 0, max: 100, step: 0.5
-      cap: type: \choice, values: <[butt round square]>, default: \round
-      join: type: \choice, values: <[bevel miter round]>, default: \round
+      mode: type: \choice, values: <[curve linear]>, default: \linear, desc: {en: "how points are joined: linear uses straight segments, curve uses a smooth curve", "zh-TW": "點與點怎麼連：linear 用直線，curve 用平滑曲線"}
+      stroke-width: type: \number, default: 1, min: 0, max: 100, step: 0.5, desc: {en: "thickness of the lines ( px )", "zh-TW": "線條粗細 ( px )"}
+      cap: type: \choice, values: <[butt round square]>, default: \round, desc: {en: "shape of the line ends: butt cuts flat at the end, round and square extend past it", "zh-TW": "線段端點的形狀：butt 齊頭截斷，round 與 square 會凸出端點"}
+      join: type: \choice, values: <[bevel miter round]>, default: \round, desc: {en: "shape of the corners where line segments meet", "zh-TW": "線段轉折處的形狀"}
     diff:
-      positive: type: \color, default: \#09f
-      negative: type: \color, default: \#f90
-      order: type: \choice, default: \none, values: ['none', 'series 1', 'series 2', 'diff']
+      positive: type: \color, default: \#09f, desc: {en: "color of the gap where series 2 is above series 1", "zh-TW": "第二個系列高於第一個系列時，差距的顏色"}
+      negative: type: \color, default: \#f90, desc: {en: "color of the gap where series 2 is below series 1", "zh-TW": "第二個系列低於第一個系列時，差距的顏色"}
+      order: type: \choice, default: \none, values: ['none', 'series 1', 'series 2', 'diff'], desc: {en: "sort the x axis by series 1, series 2 or their difference; none keeps the data order ( diff mode only )", "zh-TW": "X 軸依第一系列、第二系列或兩者差值排序；none 照資料原本的順序 ( 只用於 diff 模式 )"}
     dot:
-      show: type: \boolean, default: true
-      stroke-width: type: \number, default: 1, min: 0, max: 100, step: 0.5
+      show: type: \boolean, default: true, desc: {en: "draw a dot at each data point", "zh-TW": "在每個資料點畫一個圓點"}
+      stroke-width: type: \number, default: 1, min: 0, max: 100, step: 0.5, desc: {en: "thickness of the dot outlines ( px )", "zh-TW": "圓點外框粗細 ( px )"}
       fill:
         type: \color, default: \auto, presets: <[auto]>
+        desc: {en: "fill color of the dots; auto uses the series color", "zh-TW": "圓點的填色；auto 使用該系列的顏色"}
         i18n: en: {"auto": "Auto"}, "zh-TW": {"auto": "自動"}
-      size: type: \number, default: 3, min: 1, max: 100, step: 0.5
+      size: type: \number, default: 3, min: 1, max: 100, step: 0.5, desc: {en: "radius of the dots ( px )", "zh-TW": "圓點半徑 ( px )"}
   dimension:
     value: {type: \R, name: "y axis", multiple: true}
     order: {type: \ON, name: "x axis"}
