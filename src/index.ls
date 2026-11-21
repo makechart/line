@@ -64,6 +64,13 @@ mod = ({context, t}) ->
         desc: {en: "fill color of the dots; auto uses the series color", "zh-TW": "圓點的填色；auto 使用該系列的顏色"}
         i18n: en: {"auto": "Auto"}, "zh-TW": {"auto": "自動"}
       size: type: \number, default: 3, min: 1, max: 100, step: 0.5, desc: {en: "radius of the dots ( px )", "zh-TW": "圓點半徑 ( px )"}
+  # 段落 ( tab ) 的說明, key 是段落的路徑. preset 的段落由 chart.utils.config.tabinfo 掛上來, 共用的 common 由核心補
+  tabinfo: chart.utils.config.tabinfo({xaxis: \axis, yaxis: \axis, legend: \legend, label: \label, tip: \tip}) <<<
+    brush: desc: {en: "drag across the chart to select a range on the x axis, which filters other charts on a dashboard", "zh-TW": "在圖上拖拉選取 X 軸的一段範圍，並篩選儀表板上的其他圖"}
+    area: desc: {en: "fill of the areas under the lines, in area mode", "zh-TW": "線下面積的填色，用於 area 模式"}
+    line: desc: {en: "how the lines are drawn: curve, thickness and the shape of ends and corners", "zh-TW": "線條的畫法：曲線、粗細，以及端點與轉折的形狀"}
+    diff: desc: {en: "colors and order of the gap between the first two series, in diff mode", "zh-TW": "前兩個系列之間差距的顏色與排序，用於 diff 模式"}
+    dot: desc: {en: "the dots drawn at each data point", "zh-TW": "畫在每個資料點上的圓點"}
   dimension:
     value: {type: \R, name: "y axis", multiple: true}
     order: {type: \ON, name: "x axis"}
